@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation - GPI SDK{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-book"></i> BAPI Documentation
+    </h2>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h3>Getting Started with BAPI</h3>
+        <p>
+            BAPI is a web interface for interacting with the GPI SDK. It allows you to create, manage, and test agents through 
+            both web UI and programmatic interfaces.
+        </p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="list-group" id="doc-tabs" role="tablist">
+            <a class="list-group-item list-group-item-action active" id="list-overview-list" data-bs-toggle="list" href="#list-overview" role="tab">Overview</a>
+            <a class="list-group-item list-group-item-action" id="list-agent-creation-list" data-bs-toggle="list" href="#list-agent-creation" role="tab">Agent Creation</a>
+            <a class="list-group-item list-group-item-action" id="list-external-agents-list" data-bs-toggle="list" href="#list-external-agents" role="tab">External Agents</a>
+            <a class="list-group-item list-group-item-action" id="list-context-functions-list" data-bs-toggle="list" href="#list-context-functions" role="tab">Context Functions</a>
+            <a class="list-group-item list-group-item-action" id="list-llm-integration-list" data-bs-toggle="list" href="#list-llm-integration" role="tab">LLM Integration</a>
+            <a class="list-group-item list-group-item-action" id="list-auto-context-list" data-bs-toggle="list" href="#list-auto-context" role="tab">Automatic Context</a>
+            <a class="list-group-item list-group-item-action" id="list-api-reference-list" data-bs-toggle="list" href="#list-api-reference" role="tab">API Reference</a>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="tab-content" id="nav-tabContent">
+            <!-- Overview -->
+            <div class="tab-pane fade show active" id="list-overview" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4>BAPI Overview</h4>
+                        <p>
+                            BAPI provides both a web interface and a REST API for managing agent-based systems using the GPI SDK. 
+                            Key features include:
+                        </p>
+                        <ul>
+                            <li>Create and manage internal and external agents</li>
+                            <li>Register and manage language models (LLMs)</li>
+                            <li>Test agent responses in the web interface</li>
+                            <li>Define context functions for enhancing agent capabilities</li>
+                            <li>Programmatically interact with your agents via HTTP APIs</li>
+                        </ul>
+                        
+                        <h5>Default Configuration</h5>
+                        <p>
+                            By default, BAPI runs on <code>http://127.0.0.1:5000</code> with debug mode enabled.
+                            You can customize the host, port, and other settings when initializing the server.
+                        </p>
+                        
+                        <div class="mt-4">
+                            <h5>Server Initialization</h5>
+                            <pre class="bg-light p-3 rounded"><code>from gpi.web.server import bapi
+
+# Using default settings
+server = bapi()
+server.start(debug=True)
+
+# With custom settings
+server = bapi(host="0.0.0.0", port=8080)
+server.start(debug=False)</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Agent Creation -->
+            <div class="tab-pane fade" id="list-agent-creation" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4>Creating Agents</h4>
+                        <p>
+                            Agents can be created both through the web interface and programmatically.
+                        </p>
+                        
+                        <h5>Using Python SDK</h5>
+                        <pre class="bg-light p-3 rounded"><code>import gpi
+
+# Create and register an internal agent
+agent = gpi.create.agent(
+    name="My Agent", 
+    id="agent1",
+    abilities=["talk", "search"]
+)
+
+# The agent is automatically registered
+# You can also register manually
+gpi.register.agent(agent)</code></pre>
+                        
+                        <h5>Using REST API</h5>
+                        <pre class="bg-light p-3 rounded"><code>import requests
+
+# Create an agent via HTTP API
+response = requests.post(
+    "http://127.0.0.1:5000/api/agents",
+    json={
+        "name": "API Agent",
+        "id": "api_agent1",
+        "abilities": ["talk", "calculate"],
+        "type": "internal"
+    }
+)
+
+if response.status_code == 200:
+    print("Agent created successfully!")
+    print(response.json())
+else:
+    print(f"Error: {response.text}")</code></pre>
+                        
+                        <h5>Communicating with Agents</h5>
+                        <pre class="bg-light p-3 rounded"><code>import requests
+
+# Send a message to an agent
+response = requests.post(
+    "http://127.0.0.1:5000/api/bapi",
+    json={
+        "agent_id": "api_agent1",
+        "context": "The user is asking about the weather",
+        "message": "What's the forecast for tomorrow?"
+    }
+)
+
+print(response.json()["response"])</code></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- External Agents -->
+            <div class="tab-pane fade" id="list-external-agents" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4>External Agents</h4>
+                        <p>
+                            External agents allow you to integrate with custom agent services running outside the GPI SDK.
+                            Messages are forwarded to your external endpoint for processing.
+                        </p>
+                        
+                        <h5>Creating External Agents</h5>
+                        <pre class="bg-light p-3 rounded"><code>import gpi
+
+# Create an external agent
+external_agent = gpi.create.external_agent(
+    name="External Service",
+    id="ext_agent1",
+    abilities=["special_ability"],
+    external_endpoint="https://your-service.example.com/agent",
+    api_key="your_secret_key"  # Optional
+)
+
+# Alternatively, use the generic agent creation method
+agent = gpi.create.agent(
+    name="External Service",
+    id="ext_agent1", 
+    abilities=["special_ability"],
+    agent_type="external",
+    external_endpoint="https://your-service.example.com/agent",
+    api_key="your_secret_key"  # Optional
+)</code></pre>
+                        
+                        <h5>External Agent API Protocol</h5>
+                        <p>
+                            Your external agent endpoint should accept POST requests with the following JSON structure:
+                        </p>
+                        <pre class="bg-light p-3 rounded"><code>{
+    "context": "Context information for the agent",
+    "message": "User message content",
+    "agent_id": "ext_agent1"
+}</code></pre>
+                        
+                        <p>
+                            And return responses in this format:
+                        </p>
+                        <pre class="bg-light p-3 rounded"><code>{
+    "response": "The agent's response to the message"
+}</code></pre>
+                        
+                        <h5>Implementing an External Agent Service</h5>
+                        <p>
+                            Example using Flask:
+                        </p>
+                        <pre class="bg-light p-3 rounded"><code>from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/agent', methods=['POST'])
+def process_agent_request():
+    data = request.json
+    
+    # Extract information
+    context = data.get('context', '')
+    message = data.get('message', '')
+    agent_id = data.get('agent_id', '')
+    
+    # Process the message (implement your agent logic here)
+    response = f"Agent {agent_id} received: {message}"
+    
+    # Return the response
+    return jsonify({"response": response})
+
+if __name__ == '__main__':
+    app.run(port=5001)</code></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Context Functions -->
+            <div class="tab-pane fade" id="list-context-functions" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4>Context Functions</h4>
+                        <p>
+                            Context functions enhance agent capabilities by providing access to external tools and services.
+                        </p>
+                        
+                        <h5>Registering a Context Function</h5>
+                        <pre class="bg-light p-3 rounded"><code>import gpi
+
+# Define a context function
+def get_weather(location, date=None):
+    """Get weather information for a location"""
+    # Implementation here
+    return f"Weather forecast for {location}: Sunny, 75°F"
+
+# Register the function
+gpi.register.context_function(get_weather)
+
+# Then agents can use this function when processing messages</code></pre>
+                        
+                        <h5>Context Function Parameters</h5>
+                        <p>
+                            Context functions can accept parameters and return values that your agents can use. 
+                            The function's docstring is used to describe its purpose.
+                        </p>
+                        
+                        <h5>Using Context Functions in Agents</h5>
+                        <pre class="bg-light p-3 rounded"><code>def process_message(context, message):
+    # Example agent implementation that uses context functions
+    if "weather" in message.lower():
+        location = extract_location(message)
+        # Access the registered context function
+        weather_info = gpi.context.get_weather(location)
+        return f"I checked the weather for you. {weather_info}"
+    
+    return "I'm not sure how to respond to that."</code></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LLM Integration -->
+            <div class="tab-pane fade" id="list-llm-integration" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4>LLM Integration</h4>
+                        <p>
+                            The GPI SDK supports integration with various Language Models (LLMs) to power agent responses.
+                        </p>
+                        
+                        <h5>Registering an LLM</h5>
+                        <pre class="bg-light p-3 rounded"><code>import gpi
+from gpi.llm import OpenAILLM
+
+# Create LLM instance
+llm = OpenAILLM(
+    model="gpt-4",
+    api_key="your_openai_api_key"
+)
+
+# Register the LLM
+gpi.register.llm(llm, name="gpt4")</code></pre>
+                        
+                        <h5>Creating an LLM-powered Agent</h5>
+                        <pre class="bg-light p-3 rounded"><code>import gpi
+
+# Create an agent that uses an LLM
+agent = gpi.create.agent(
+    name="AI Assistant",
+    id="ai_assistant",
+    abilities=["talk", "reason"],
+    llm="gpt4"  # Reference the registered LLM by name
+)</code></pre>
+                        
+                        <h5>Custom LLM Implementation</h5>
+                        <p>
+                            You can implement custom LLM classes by extending the base LLM class:
+                        </p>
+                        <pre class="bg-light p-3 rounded"><code>from gpi.llm import BaseLLM
+
+class CustomLLM(BaseLLM):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Initialize your custom LLM
+        
+    def generate(self, prompt, **kwargs):
+        # Implement your custom generation logic
+        return "Generated response from custom LLM"
+        
+# Register your custom LLM
+custom_llm = CustomLLM()
+gpi.register.llm(custom_llm, name="custom_model")</code></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Automatic Context -->
+            <div class="tab-pane fade" id="list-auto-context" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4>Automatic Context Extraction</h4>
+                        <p>
+                            GPI SDK now supports automatic context extraction from user messages, eliminating 
+                            the need to manually specify context in many scenarios.
+                        </p>
+                        
+                        <h5>How Automatic Context Works</h5>
+                        <p>
+                            When a message is processed without providing an explicit context, the system:
+                        </p>
+                        <ol>
+                            <li>Analyzes the message content</li>
+                            <li>Identifies topics, intents, and entities</li>
+                            <li>Constructs a context that encapsulates this understanding</li>
+                            <li>Optionally enhances the context using an LLM (if available)</li>
+                            <li>Stores the context for the user session</li>
+                        </ol>
+                        
+                        <h5>Using Automatic Context in API Calls</h5>
+                        <pre class="bg-light p-3 rounded"><code>import requests
+
+# Using automatic context extraction
+response = requests.post(
+    "http://127.0.0.1:5000/api/bapi",
+    json={
+        "message": "What's the weather like in New York?",
+        "user_id": "user123",  # Optional, for maintaining context across requests
+        "use_llm": True  # Optional, enhances extraction with LLM if available
+    }
+)
+
+print(response.json())
+
+# Response includes the extracted context
+# {
+#   "response": "The weather in New York is...",
+#   "context": "Topic: weather. Entities: New York. Intent: question. Query: What's the weather like in New York?",
+#   "auto_extracted": true
+# }</code></pre>
+                        
+                        <h5>Using Automatic Context in Python SDK</h5>
+                        <pre class="bg-light p-3 rounded"><code>import gpi
+
+# Process a message with automatic context extraction
+response = gpi.bapi(
+    message="What's the weather forecast for tomorrow?",
+    user_id="user123",  # Optional
+    use_llm=True  # Optional
+)
+
+# Get the current context
+current_context = gpi.get_context("user123")
+print(f"Extracted context: {current_context}")
+
+# Clear context when done
+gpi.clear_context("user123")</code></pre>
+                        
+                        <h5>Accessing Context History</h5>
+                        <pre class="bg-light p-3 rounded"><code>import gpi
+
+# Get context history for a user
+history = gpi.get_context_history("user123", limit=5)
+for ctx in history:
+    print(f"Previous context: {ctx}")</code></pre>
+                        
+                        <h5>Combining Automatic and Manual Context</h5>
+                        <p>
+                            You can mix automatic and manual context as needed:
+                        </p>
+                        <ul>
+                            <li>Start with automatic context extraction for initial interactions</li>
+                            <li>Retrieve the current context when needed</li>
+                            <li>Modify or replace it manually for specific requirements</li>
+                            <li>Continue with automatic updates based on further messages</li>
+                        </ul>
+                        
+                        <h5>Context REST API</h5>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Endpoint</th>
+                                    <th>Method</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/api/context</code></td>
+                                    <td>GET</td>
+                                    <td>Get current context for a user</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/context</code></td>
+                                    <td>POST</td>
+                                    <td>Manually set context for a user</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/context</code></td>
+                                    <td>DELETE</td>
+                                    <td>Clear context for a user</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/context/history</code></td>
+                                    <td>GET</td>
+                                    <td>Get context history for a user</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Reference -->
+            <div class="tab-pane fade" id="list-api-reference" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h4>API Reference</h4>
+                        <p>
+                            BAPI provides a REST API for programmatic interaction.
+                        </p>
+                        
+                        <h5>Endpoints</h5>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Endpoint</th>
+                                    <th>Method</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/api/agents</code></td>
+                                    <td>GET</td>
+                                    <td>List all registered agents</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/agents</code></td>
+                                    <td>POST</td>
+                                    <td>Create a new agent</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/agents/{agent_id}</code></td>
+                                    <td>GET</td>
+                                    <td>Get agent details</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/agents/{agent_id}</code></td>
+                                    <td>DELETE</td>
+                                    <td>Delete an agent</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/bapi</code></td>
+                                    <td>POST</td>
+                                    <td>Send a message to an agent</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/llms</code></td>
+                                    <td>GET</td>
+                                    <td>List all registered LLMs</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/llms</code></td>
+                                    <td>POST</td>
+                                    <td>Register a new LLM</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/car</code></td>
+                                    <td>POST</td>
+                                    <td>Get a context-aware response</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/workflow</code></td>
+                                    <td>POST</td>
+                                    <td>Execute a workflow between agents</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h5>Example: Processing a Message</h5>
+                        <pre class="bg-light p-3 rounded"><code>import requests
+
+# Process a message with BAPI
+response = requests.post(
+    "http://127.0.0.1:5000/api/bapi",
+    json={
+        "agent_id": "my_agent",
+        "context": "User context information",
+        "message": "Hello, can you help me?"
+    }
+)
+
+print(response.json())</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

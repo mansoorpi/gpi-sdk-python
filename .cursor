@@ -1,0 +1,68 @@
+# .cursor - Instructions for AI Agent to Implement SDK Framework for Python AI Agentic Development
+
+## Task Overview
+You are tasked with developing a clean SDK framework for AI Agentic development. This SDK will include the ability to create agents, register AI/LLMs, handle context-aware responses, and integrate with external systems through HTTP endpoints.
+
+## Key Features to Implement
+
+### 1. Create Agent Function (`gpi.create.agent()`)
+- Implement a function `gpi.create.agent()` that will create an agent with the following properties:
+  - **Agent Name**: String (Name of the agent)
+  - **Agent ID**: String (Unique identifier for the agent)
+  - **Abilities**: List of strings (e.g., "talk", "think", "learn")
+  - The function should store the agent in an internal registry.
+
+### 2. Register Agent & LLM/AI (`gpi.register.agent()` and `gpi.register.llm/ai()`)
+- Implement a registration function for both internal and external agents, as well as AI/LLM models.
+  - **Agent Registration**: `gpi.register.agent()` should register an agent either created with the SDK or externally created. The agent should be identified by an ID and abilities.
+  - **LLM/AI Registration**: `gpi.register.llm/ai()` should register an AI/LLM model, specifying the model name, API key or file path, and model-specific configuration.
+
+### 3. Context Awareness and CAR (Context-Aware Response)
+- Implement a `gpi.car()` function that generates context-aware responses. The function should:
+  - Accept a context string and a response string.
+  - The response should be dynamically generated based on the provided context.
+
+### 4. Inbuilt Broker API (BAPI) (`gpi.bapi()`)
+- Implement an inbuilt Broker API (BAPI) function `gpi.bapi()` that handles communication between agents and AI/LLMs. It should:
+  - Accept a **context** and a **message** as input.
+  - Generate a response based on the context and the capabilities of registered agents/LLMs.
+  - Implement a simulation of how a response would be generated based on the current context.
+
+### 5. Agent and LLM Communication
+- The registered agents and LLMs should be able to communicate with each other based on the current context. Implement a messaging system where agents or models can send requests or responses to each other.
+
+### 6. HTTP Endpoint Integration
+- Implement HTTP-based registration for both agents and LLMs using the following functions:
+  - `gpi.register.agent_http(endpoint, payload)` - HTTP POST request to register an agent.
+  - `gpi.register.llm_http(endpoint, payload)` - HTTP POST request to register an LLM.
+  - The payload should contain necessary details like authentication tokens, agent/LLM information, and their configurations.
+  - The response from the HTTP requests should be handled and processed accordingly.
+
+### 7. BAPI UI Simulation
+- Implement a simulation of the BAPI UI where agents can be registered via the UI (i.e., a chat-like bot interface). This function should:
+  - Accept inputs for agent name, ID, and abilities.
+  - Register the agent via the internal `gpi.register.agent()` function.
+
+### Example Usages
+- **Creating an agent**: `gpi.create.agent("AgentX", "001", ["talk", "think", "learn"])`
+- **Registering an agent**: `gpi.register.agent("AgentX", "001", ["talk", "think", "learn"])`
+- **Registering an LLM**: `gpi.register.llm("GPT-4", "api_key_here", "/path/to/gpt4")`
+- **Calling the Broker API**: `gpi.bapi("weather_context", "What is the weather today?")`
+- **Context-Aware Response**: `gpi.car("weather_context", "The weather is sunny today.")`
+
+### Context Management
+- The framework should track the **current context** (`self.context`) and ensure that responses are generated based on that context. The context should be updated dynamically as the system interacts with agents and models.
+
+### External Agent Communication
+- External agents (not created by the SDK) should be able to communicate with the system if they are registered using the HTTP endpoint.
+
+## Additional Notes:
+- The framework should be extensible to accommodate additional agents, abilities, and models in the future.
+- Ensure that the system is modular and that each function performs a single, well-defined task.
+- Proper error handling should be implemented for agent/LLM registration and message generation.
+
+## Deliverables:
+- Python classes and functions for the SDK, including methods for creating agents, registering LLMs, generating context-aware responses, and communicating via HTTP.
+- Proper documentation for each function and class.
+- Example usage in the form of unit tests or scripts demonstrating the functionality of the SDK.
+

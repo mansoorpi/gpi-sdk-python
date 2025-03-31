@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}GPI SDK Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0">
+                    <i class="bi bi-house-door"></i> GPI SDK Dashboard
+                </h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    Welcome to the GPI SDK Web Interface. This dashboard allows you to manage agents, LLMs, and create workflows.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-people"></i> Agents
+                </h4>
+            </div>
+            <div class="card-body">
+                <div id="agent-count" class="display-4 text-center mb-3">-</div>
+                <p>
+                    Create and manage agents with various abilities.
+                </p>
+                <a href="{{ url_for('agents') }}" class="btn btn-success w-100">
+                    <i class="bi bi-plus-circle"></i> Manage Agents
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-cpu"></i> LLMs
+                </h4>
+            </div>
+            <div class="card-body">
+                <div id="llm-count" class="display-4 text-center mb-3">-</div>
+                <p>
+                    Register and configure language models for agents to use.
+                </p>
+                <a href="{{ url_for('llms') }}" class="btn btn-info w-100">
+                    <i class="bi bi-plus-circle"></i> Manage LLMs
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-warning">
+                <h4 class="mb-0">
+                    <i class="bi bi-diagram-3"></i> Workflows
+                </h4>
+            </div>
+            <div class="card-body">
+                <p>
+                    Create multi-agent workflows to automate complex tasks.
+                </p>
+                <a href="{{ url_for('workflows') }}" class="btn btn-warning w-100">
+                    <i class="bi bi-play"></i> Create Workflow
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-chat-dots"></i> BAPI Chat
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <label class="form-label">Context Extraction</label>
+                            <div class="form-text text-muted">The system will automatically extract context from your message.</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="bapi-use-auto-context" checked>
+                            <label class="form-check-label" for="bapi-use-auto-context">Auto-extract context</label>
+                        </div>
+                    </div>
+                    <div id="bapi-manual-context-container" class="mt-2 d-none">
+                        <input type="text" class="form-control" id="bapi-context" placeholder="Enter manual context...">
+                        <small class="form-text text-muted">Only used when auto-extraction is disabled.</small>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="bapi-message" class="form-label">Message</label>
+                    <textarea class="form-control" id="bapi-message" rows="2" placeholder="Enter your message..."></textarea>
+                </div>
+                <button id="send-bapi" class="btn btn-primary">
+                    <i class="bi bi-send"></i> Send
+                </button>
+                <div class="mt-3">
+                    <div class="card">
+                        <div class="card-header">Response</div>
+                        <div class="card-body">
+                            <pre id="bapi-response" class="mb-0">Send a message to see the response...</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-braces"></i> Quick Register
+                </h4>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="registerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="agent-tab" data-bs-toggle="tab" data-bs-target="#agent-panel" type="button" role="tab">Agent</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="llm-tab" data-bs-toggle="tab" data-bs-target="#llm-panel" type="button" role="tab">LLM</button>
+                    </li>
+                </ul>
+                <div class="tab-content p-3 border border-top-0 rounded-bottom">
+                    <div class="tab-pane fade show active" id="agent-panel" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="quick-agent-name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="quick-agent-name" placeholder="Agent name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="quick-agent-id" class="form-label">ID</label>
+                            <input type="text" class="form-control" id="quick-agent-id" placeholder="Agent ID">
+                        </div>
+                        <div class="mb-3">
+                            <label for="quick-agent-abilities" class="form-label">Abilities</label>
+                            <input type="text" class="form-control" id="quick-agent-abilities" placeholder="Comma-separated abilities (e.g., talk,think,learn)">
+                        </div>
+                        <button id="quick-register-agent" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Register Agent
+                        </button>
+                    </div>
+                    <div class="tab-pane fade" id="llm-panel" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="quick-llm-name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="quick-llm-name" placeholder="LLM name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="quick-llm-key" class="form-label">API Key</label>
+                            <input type="password" class="form-control" id="quick-llm-key" placeholder="API key">
+                        </div>
+                        <div class="mb-3">
+                            <label for="quick-llm-path" class="form-label">Model Path (optional)</label>
+                            <input type="text" class="form-control" id="quick-llm-path" placeholder="Path to model">
+                        </div>
+                        <button id="quick-register-llm" class="btn btn-info">
+                            <i class="bi bi-plus-circle"></i> Register LLM
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load counts
+    fetchCounts();
+    
+    // Setup BAPI chat
+    document.getElementById('send-bapi').addEventListener('click', sendBapiMessage);
+    
+    // Setup quick register
+    document.getElementById('quick-register-agent').addEventListener('click', quickRegisterAgent);
+    document.getElementById('quick-register-llm').addEventListener('click', quickRegisterLLM);
+    
+    // Setup auto-context toggle
+    document.getElementById('bapi-use-auto-context').addEventListener('change', function() {
+        const manualContextContainer = document.getElementById('bapi-manual-context-container');
+        if (this.checked) {
+            manualContextContainer.classList.add('d-none');
+        } else {
+            manualContextContainer.classList.remove('d-none');
+        }
+    });
+});
+
+function fetchCounts() {
+    // Fetch agent count
+    axios.get('/api/agents')
+        .then(response => {
+            const agentCount = Object.keys(response.data).length;
+            document.getElementById('agent-count').textContent = agentCount;
+        })
+        .catch(error => {
+            console.error('Error fetching agents:', error);
+            document.getElementById('agent-count').textContent = '!';
+        });
+    
+    // Fetch LLM count
+    axios.get('/api/llms')
+        .then(response => {
+            const llmCount = Object.keys(response.data).length;
+            document.getElementById('llm-count').textContent = llmCount;
+        })
+        .catch(error => {
+            console.error('Error fetching LLMs:', error);
+            document.getElementById('llm-count').textContent = '!';
+        });
+}
+
+function sendBapiMessage() {
+    const useAutoContext = document.getElementById('bapi-use-auto-context').checked;
+    const context = useAutoContext ? null : document.getElementById('bapi-context').value;
+    const message = document.getElementById('bapi-message').value;
+    const responseElement = document.getElementById('bapi-response');
+    
+    if (!message) {
+        responseElement.textContent = 'Please provide a message.';
+        return;
+    }
+    
+    responseElement.textContent = 'Processing...';
+    
+    // Prepare the payload
+    const payload = {
+        message: message,
+        use_llm: true // Enable LLM-based context enhancement if available
+    };
+    
+    // Only include context if auto-extraction is disabled and context is provided
+    if (!useAutoContext && context) {
+        payload.context = context;
+    }
+    
+    axios.post('/api/bapi', payload)
+    .then(response => {
+        if (response.data.context) {
+            // If manual context view is visible, update the input
+            if (!useAutoContext) {
+                document.getElementById('bapi-context').value = response.data.context;
+            }
+            
+            const autoNotice = response.data.auto_extracted 
+                ? ' (Context was automatically extracted)' 
+                : '';
+            
+            responseElement.innerHTML = `
+                <div class="mb-2">${response.data.response}</div>
+                <div class="alert alert-secondary p-2 mb-0">
+                    <small class="text-muted"><strong>Context:</strong> ${response.data.context}${autoNotice}</small>
+                </div>`;
+        } else {
+            responseElement.textContent = response.data.response;
+        }
+    })
+    .catch(error => {
+        console.error('Error sending BAPI message:', error);
+        responseElement.textContent = 'Error: ' + (error.response?.data?.error || 'Something went wrong');
+    });
+}
+
+function quickRegisterAgent() {
+    const name = document.getElementById('quick-agent-name').value;
+    const id = document.getElementById('quick-agent-id').value;
+    const abilitiesText = document.getElementById('quick-agent-abilities').value;
+    const abilities = abilitiesText.split(',').map(a => a.trim()).filter(a => a);
+    
+    if (!name || !id) {
+        alert('Please provide both name and ID.');
+        return;
+    }
+    
+    axios.post('/api/agents', {
+        name: name,
+        id: id,
+        abilities: abilities
+    })
+    .then(response => {
+        alert(`Agent ${name} registered successfully!`);
+        document.getElementById('quick-agent-name').value = '';
+        document.getElementById('quick-agent-id').value = '';
+        document.getElementById('quick-agent-abilities').value = '';
+        fetchCounts();
+    })
+    .catch(error => {
+        console.error('Error registering agent:', error);
+        alert('Error: ' + (error.response?.data?.error || 'Something went wrong'));
+    });
+}
+
+function quickRegisterLLM() {
+    const name = document.getElementById('quick-llm-name').value;
+    const apiKey = document.getElementById('quick-llm-key').value;
+    const modelPath = document.getElementById('quick-llm-path').value;
+    
+    if (!name || !apiKey) {
+        alert('Please provide both name and API key.');
+        return;
+    }
+    
+    axios.post('/api/llms', {
+        name: name,
+        api_key: apiKey,
+        model_path: modelPath || null
+    })
+    .then(response => {
+        alert(`LLM ${name} registered successfully!`);
+        document.getElementById('quick-llm-name').value = '';
+        document.getElementById('quick-llm-key').value = '';
+        document.getElementById('quick-llm-path').value = '';
+        fetchCounts();
+    })
+    .catch(error => {
+        console.error('Error registering LLM:', error);
+        alert('Error: ' + (error.response?.data?.error || 'Something went wrong'));
+    });
+}
+</script>
+{% endblock %} 

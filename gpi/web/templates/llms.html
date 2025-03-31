@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}LLMs - GPI SDK{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-cpu"></i> LLMs
+    </h2>
+    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#createLLMModal">
+        <i class="bi bi-plus-circle"></i> New LLM
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>API Key</th>
+                        <th>Model Path</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="llms-table-body">
+                    <tr>
+                        <td colspan="5" class="text-center">Loading LLMs...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create LLM Modal -->
+<div class="modal fade" id="createLLMModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Register LLM
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="create-llm-form">
+                    <div class="mb-3">
+                        <label for="llm-name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="llm-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="llm-api-key" class="form-label">API Key</label>
+                        <input type="password" class="form-control" id="llm-api-key" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="llm-model-path" class="form-label">Model Path (optional)</label>
+                        <input type="text" class="form-control" id="llm-model-path">
+                    </div>
+                    <div class="mb-3">
+                        <label for="llm-config" class="form-label">Configuration (JSON, optional)</label>
+                        <textarea class="form-control" id="llm-config" rows="3" placeholder="{}">{}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="create-llm-btn" class="btn btn-info">Register</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load LLMs
+    loadLLMs();
+    
+    // Setup event listeners
+    document.getElementById('create-llm-btn').addEventListener('click', createLLM);
+});
+
+function loadLLMs() {
+    axios.get('/api/llms')
+        .then(response => {
+            const llms = response.data;
+            const tableBody = document.getElementById('llms-table-body');
+            
+            // Clear previous content
+            tableBody.innerHTML = '';
+            
+            if (Object.keys(llms).length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No LLMs found</td></tr>';
+                return;
+            }
+            
+            for (const [name, llm] of Object.entries(llms)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${llm.name}</td>
+                    <td>
+                        <span class="text-muted">
+                            ${llm.api_key.substring(0, 4)}${'*'.repeat(8)}
+                        </span>
+                    </td>
+                    <td>${llm.model_path || '<em>None</em>'}</td>
+                    <td>
+                        <span class="badge bg-${llm.active ? 'success' : 'danger'}">
+                            ${llm.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-${llm.active ? 'warning' : 'success'} toggle-status" data-name="${llm.name}" data-active="${llm.active}">
+                            <i class="bi bi-${llm.active ? 'pause' : 'play'}"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-llm" data-name="${llm.name}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            }
+            
+            // Add event listeners for action buttons
+            document.querySelectorAll('.toggle-status').forEach(button => {
+                button.addEventListener('click', toggleLLMStatus);
+            });
+            
+            document.querySelectorAll('.delete-llm').forEach(button => {
+                button.addEventListener('click', deleteLLM);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading LLMs:', error);
+            document.getElementById('llms-table-body').innerHTML = 
+                '<tr><td colspan="5" class="text-center text-danger">Error loading LLMs</td></tr>';
+        });
+}
+
+function createLLM() {
+    const name = document.getElementById('llm-name').value;
+    const apiKey = document.getElementById('llm-api-key').value;
+    const modelPath = document.getElementById('llm-model-path').value || null;
+    let config = {};
+    
+    try {
+        const configText = document.getElementById('llm-config').value;
+        if (configText.trim()) {
+            config = JSON.parse(configText);
+        }
+    } catch (e) {
+        alert('Error parsing configuration JSON: ' + e.message);
+        return;
+    }
+    
+    if (!name || !apiKey) {
+        alert('Please provide both name and API key.');
+        return;
+    }
+    
+    axios.post('/api/llms', {
+        name: name,
+        api_key: apiKey,
+        model_path: modelPath,
+        config: config
+    })
+    .then(response => {
+        // Close modal and reset form
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createLLMModal'));
+        modal.hide();
+        document.getElementById('llm-name').value = '';
+        document.getElementById('llm-api-key').value = '';
+        document.getElementById('llm-model-path').value = '';
+        document.getElementById('llm-config').value = '{}';
+        
+        // Reload LLMs
+        loadLLMs();
+    })
+    .catch(error => {
+        console.error('Error creating LLM:', error);
+        alert('Error: ' + (error.response?.data?.error || 'Something went wrong'));
+    });
+}
+
+function toggleLLMStatus(event) {
+    const button = event.currentTarget;
+    const llmName = button.dataset.name;
+    const isActive = button.dataset.active === 'true';
+    
+    // For simulation, we'll make a DELETE request to deactivate
+    // In a real app, you'd have a proper toggle endpoint
+    if (isActive) {
+        axios.delete(`/api/llms/${llmName}`)
+            .then(response => {
+                loadLLMs();
+            })
+            .catch(error => {
+                console.error('Error toggling LLM status:', error);
+                alert('Error: ' + (error.response?.data?.error || 'Something went wrong'));
+            });
+    } else {
+        // Since we don't have a real activate endpoint, we'll just reload
+        // In a real app, you'd make a PUT/PATCH request to activate
+        alert('LLM activation not implemented in this demo');
+        loadLLMs();
+    }
+}
+
+function deleteLLM(event) {
+    const button = event.currentTarget;
+    const llmName = button.dataset.name;
+    
+    if (confirm('Are you sure you want to delete this LLM?')) {
+        axios.delete(`/api/llms/${llmName}`)
+            .then(response => {
+                loadLLMs();
+            })
+            .catch(error => {
+                console.error('Error deleting LLM:', error);
+                alert('Error: ' + (error.response?.data?.error || 'Something went wrong'));
+            });
+    }
+}
+</script>
+{% endblock %} 

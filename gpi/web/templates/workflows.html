@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}Workflows - GPI SDK{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-diagram-3"></i> Workflows
+    </h2>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear"></i> Workflow Builder
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <label class="form-label">Context Extraction</label>
+                            <div class="form-text text-muted">The system will automatically extract context from your initial message.</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="workflow-use-auto-context" checked>
+                            <label class="form-check-label" for="workflow-use-auto-context">Auto-extract context</label>
+                        </div>
+                    </div>
+                    <div id="workflow-manual-context-container" class="mt-2 d-none">
+                        <input type="text" class="form-control" id="workflow-context" placeholder="Enter manual context...">
+                        <small class="form-text text-muted">Only used when auto-extraction is disabled.</small>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="workflow-message" class="form-label">Initial Message</label>
+                    <textarea class="form-control" id="workflow-message" rows="2" placeholder="Enter the initial message..."></textarea>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Workflow Steps</h6>
+                <div id="workflow-steps">
+                    <div class="alert alert-light text-center">
+                        No steps added yet. Click "Add Step" to begin building your workflow.
+                    </div>
+                </div>
+                
+                <button id="add-step-btn" class="btn btn-outline-primary mt-2">
+                    <i class="bi bi-plus-circle"></i> Add Step
+                </button>
+                
+                <div class="mt-4">
+                    <button id="execute-workflow-btn" class="btn btn-warning">
+                        <i class="bi bi-play"></i> Execute Workflow
+                    </button>
+                    <button id="clear-workflow-btn" class="btn btn-outline-danger">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-journal-text"></i> Workflow Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="workflow-results">
+                    <div class="alert alert-light text-center">
+                        Execute a workflow to see results here.
+                    </div>
+                </div>
+                
+                <div class="mt-3 d-none" id="final-result-container">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">Final Output</div>
+                        <div class="card-body">
+                            <pre id="final-result" class="mb-0"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Step Modal -->
+<div class="modal fade" id="addStepModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Add Workflow Step
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="step-agent" class="form-label">Select Agent</label>
+                    <select class="form-select" id="step-agent">
+                        <option value="">Select an agent...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="step-operation" class="form-label">Operation</label>
+                    <select class="form-select" id="step-operation">
+                        <option value="process" selected>process</option>
+                    </select>
+                    <small class="form-text text-muted">Currently only 'process' is supported.</small>
+                </div>
+                <div class="mb-3">
+                    <label for="step-description" class="form-label">Description (optional)</label>
+                    <input type="text" class="form-control" id="step-description" placeholder="What does this step do?">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="add-step-confirm" class="btn btn-success">Add Step</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load agents for step selection
+    loadAgentsForWorkflow();
+    
+    // Setup event listeners
+    document.getElementById('add-step-btn').addEventListener('click', showAddStepModal);
+    document.getElementById('add-step-confirm').addEventListener('click', addWorkflowStep);
+    document.getElementById('execute-workflow-btn').addEventListener('click', executeWorkflow);
+    document.getElementById('clear-workflow-btn').addEventListener('click', clearWorkflow);
+    
+    // Setup delegated event listener for dynamic buttons
+    document.getElementById('workflow-steps').addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-step') || e.target.parentElement.classList.contains('delete-step')) {
+            const button = e.target.classList.contains('delete-step') ? e.target : e.target.parentElement;
+            button.closest('.card').remove();
+            updateStepLabels();
+            checkWorkflowSteps();
+        }
+        
+        if (e.target.classList.contains('move-up') || e.target.parentElement.classList.contains('move-up')) {
+            const button = e.target.classList.contains('move-up') ? e.target : e.target.parentElement;
+            const card = button.closest('.card');
+            const prevCard = card.previousElementSibling;
+            if (prevCard) {
+                card.parentNode.insertBefore(card, prevCard);
+                updateStepLabels();
+            }
+        }
+        
+        if (e.target.classList.contains('move-down') || e.target.parentElement.classList.contains('move-down')) {
+            const button = e.target.classList.contains('move-down') ? e.target : e.target.parentElement;
+            const card = button.closest('.card');
+            const nextCard = card.nextElementSibling;
+            if (nextCard) {
+                card.parentNode.insertBefore(nextCard, card);
+                updateStepLabels();
+            }
+        }
+    });
+    
+    // Setup auto-context toggle for workflow
+    document.getElementById('workflow-use-auto-context').addEventListener('change', function() {
+        const manualContextContainer = document.getElementById('workflow-manual-context-container');
+        if (this.checked) {
+            manualContextContainer.classList.add('d-none');
+        } else {
+            manualContextContainer.classList.remove('d-none');
+        }
+    });
+});
+
+function loadAgentsForWorkflow() {
+    axios.get('/api/agents')
+        .then(response => {
+            const agents = response.data;
+            const selectElement = document.getElementById('step-agent');
+            
+            // Clear select options except the first one
+            while (selectElement.options.length > 1) {
+                selectElement.remove(1);
+            }
+            
+            for (const [id, agent] of Object.entries(agents)) {
+                if (agent.active) {
+                    const option = document.createElement('option');
+                    option.value = agent.id;
+                    option.text = `${agent.name} (${agent.id})`;
+                    selectElement.appendChild(option);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading agents for workflow:', error);
+        });
+}
+
+function showAddStepModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addStepModal'));
+    modal.show();
+}
+
+function addWorkflowStep() {
+    const agentSelect = document.getElementById('step-agent');
+    const agentId = agentSelect.value;
+    const agentText = agentSelect.options[agentSelect.selectedIndex].text;
+    const operation = document.getElementById('step-operation').value;
+    const description = document.getElementById('step-description').value;
+    
+    if (!agentId) {
+        alert('Please select an agent for this step.');
+        return;
+    }
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addStepModal'));
+    modal.hide();
+    
+    // Clear form
+    document.getElementById('step-description').value = '';
+    
+    // Add step to workflow
+    const workflowSteps = document.getElementById('workflow-steps');
+    
+    // Clear placeholder if it exists
+    if (workflowSteps.querySelector('.alert')) {
+        workflowSteps.innerHTML = '';
+    }
+    
+    const stepCard = document.createElement('div');
+    stepCard.className = 'card mb-2';
+    stepCard.dataset.agentId = agentId;
+    stepCard.dataset.operation = operation;
+    
+    stepCard.innerHTML = `
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <span class="step-label">Step X</span>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary move-up" title="Move Up">
+                    <i class="bi bi-arrow-up"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary move-down" title="Move Down">
+                    <i class="bi bi-arrow-down"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger delete-step" title="Delete Step">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <h6>${agentText}</h6>
+            <div><strong>Operation:</strong> ${operation}</div>
+            ${description ? `<div class="mt-2 text-muted">${description}</div>` : ''}
+        </div>
+    `;
+    
+    workflowSteps.appendChild(stepCard);
+    updateStepLabels();
+}
+
+function updateStepLabels() {
+    const steps = document.querySelectorAll('#workflow-steps .card');
+    steps.forEach((step, index) => {
+        step.querySelector('.step-label').textContent = `Step ${index + 1}`;
+    });
+}
+
+function checkWorkflowSteps() {
+    const workflowSteps = document.getElementById('workflow-steps');
+    if (workflowSteps.children.length === 0) {
+        workflowSteps.innerHTML = `
+            <div class="alert alert-light text-center">
+                No steps added yet. Click "Add Step" to begin building your workflow.
+            </div>
+        `;
+    }
+}
+
+function clearWorkflow() {
+    if (confirm('Are you sure you want to clear all workflow steps?')) {
+        document.getElementById('workflow-steps').innerHTML = `
+            <div class="alert alert-light text-center">
+                No steps added yet. Click "Add Step" to begin building your workflow.
+            </div>
+        `;
+        
+        document.getElementById('workflow-context').value = '';
+        document.getElementById('workflow-message').value = '';
+        
+        document.getElementById('workflow-results').innerHTML = `
+            <div class="alert alert-light text-center">
+                Execute a workflow to see results here.
+            </div>
+        `;
+        
+        document.getElementById('final-result-container').classList.add('d-none');
+    }
+}
+
+function executeWorkflow() {
+    const useAutoContext = document.getElementById('workflow-use-auto-context').checked;
+    const context = useAutoContext ? null : document.getElementById('workflow-context').value;
+    const initialMessage = document.getElementById('workflow-message').value;
+    const workflowSteps = document.querySelectorAll('#workflow-steps .card');
+    
+    if (!initialMessage) {
+        alert('Please provide an initial message.');
+        return;
+    }
+    
+    if (workflowSteps.length === 0) {
+        alert('Please add at least one step to the workflow.');
+        return;
+    }
+    
+    // Prepare steps
+    const steps = Array.from(workflowSteps).map(step => {
+        return {
+            agent_id: step.dataset.agentId,
+            operation: step.dataset.operation
+        };
+    });
+    
+    // Prepare payload
+    const payload = {
+        steps: steps,
+        initial_message: initialMessage,
+        use_llm: true // Enable LLM-based context enhancement if available
+    };
+    
+    // Only include context if auto-extraction is disabled and context is provided
+    if (!useAutoContext && context) {
+        payload.initial_context = context;
+    }
+    
+    // Show loading indicator
+    const resultsContainer = document.getElementById('workflow-results');
+    resultsContainer.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">Executing workflow...</div></div>';
+    
+    // Clear final result
+    document.getElementById('final-result-container').classList.add('d-none');
+    
+    // Execute workflow
+    axios.post('/api/workflow', payload)
+        .then(response => {
+            // Display results
+            displayWorkflowResults(response.data, useAutoContext);
+            
+            // If context was auto-extracted and shown in the first step, update the context field
+            if (useAutoContext && response.data.auto_extracted_context) {
+                const contextField = document.getElementById('workflow-context');
+                contextField.value = response.data.auto_extracted_context;
+            }
+        })
+        .catch(error => {
+            console.error('Error executing workflow:', error);
+            resultsContainer.innerHTML = `<div class="alert alert-danger">Error: ${error.response?.data?.error || 'Something went wrong'}</div>`;
+        });
+}
+
+function displayWorkflowResults(data, wasAutoExtracted) {
+    const resultsContainer = document.getElementById('workflow-results');
+    resultsContainer.innerHTML = '';
+    
+    // Display extracted context if available
+    if (data.auto_extracted_context) {
+        const contextCard = document.createElement('div');
+        contextCard.className = 'card mb-3';
+        contextCard.innerHTML = `
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-braces"></i> Extracted Context
+            </div>
+            <div class="card-body">
+                <p>${data.auto_extracted_context}</p>
+                <small class="text-muted">Context was automatically extracted from the initial message</small>
+            </div>
+        `;
+        resultsContainer.appendChild(contextCard);
+    }
+    
+    // Display each workflow step result
+    data.workflow_results.forEach((result, index) => {
+        const resultCard = document.createElement('div');
+        resultCard.className = 'card mb-3';
+        
+        if (result.error) {
+            // Error in this step
+            resultCard.innerHTML = `
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle"></i> Step ${index + 1}: Error
+                </div>
+                <div class="card-body">
+                    <p>${result.error}</p>
+                    <small class="text-muted">Agent: ${result.step?.agent_id || 'Unknown'}, Operation: ${result.step?.operation || 'Unknown'}</small>
+                </div>
+            `;
+        } else {
+            // Successful step
+            resultCard.innerHTML = `
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-check-circle"></i> Step ${index + 1}: ${result.agent_id}
+                </div>
+                <div class="card-body">
+                    <div class="mb-2"><strong>Input:</strong></div>
+                    <div class="mb-3 p-2 bg-light rounded">${result.input}</div>
+                    <div class="mb-2"><strong>Output:</strong></div>
+                    <div class="p-2 bg-light rounded">${result.output}</div>
+                </div>
+            `;
+        }
+        
+        resultsContainer.appendChild(resultCard);
+    });
+    
+    // Display final result
+    if (data.final_output) {
+        const finalResultContainer = document.getElementById('final-result-container');
+        const finalResult = document.getElementById('final-result');
+        finalResult.textContent = data.final_output;
+        finalResultContainer.classList.remove('d-none');
+    }
+}
+</script>
+{% endblock %} 
